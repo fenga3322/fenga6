@@ -1,47 +1,68 @@
-const CELL_STATES = Object.freeze({
-  unknown: 'unknown',
-  frog: 'frog',
-  excluded: 'excluded'
-});
-
+const CELL_STATES = Object.freeze({ unknown: 'unknown', frog: 'frog', excluded: 'excluded' });
 const palette = ['pond', 'lotus', 'sun', 'sky', 'berry', 'mint', 'peach', 'lavender', 'reed'];
+const ageBySize = { 6: '6–7 岁', 7: '7–8 岁', 9: '8–9 岁' };
 
-function rowRegionPuzzle({ id, age, size, title, solutionColumns, givenRows }) {
+function shuffle(items) {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+}
+
+function randomSolutionColumns(size) {
+  const columns = Array.from({ length: size }, (_, index) => index);
+  for (let attempt = 0; attempt < 5000; attempt += 1) {
+    const candidate = shuffle(columns);
+    if (candidate.every((col, row) => row === 0 || Math.abs(col - candidate[row - 1]) > 1)) return candidate;
+  }
+  return columns.map((_, row) => (row * 2) % size);
+}
+
+function neighbors4(row, col, size) {
+  return [[row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
+}
+
+function buildConnectedRegions(size, solutionColumns) {
+  const regionIds = Array.from({ length: size }, () => Array.from({ length: size }, () => -1));
+  const frontier = [];
+  solutionColumns.forEach((col, row) => {
+    regionIds[row][col] = row;
+    frontier.push([row, col]);
+  });
+
+  let remaining = size * size - size;
+  while (remaining > 0) {
+    const [row, col] = frontier[Math.floor(Math.random() * frontier.length)];
+    const openNeighbors = neighbors4(row, col, size).filter(([r, c]) => regionIds[r][c] === -1);
+    if (openNeighbors.length === 0) continue;
+    const [nextRow, nextCol] = openNeighbors[Math.floor(Math.random() * openNeighbors.length)];
+    regionIds[nextRow][nextCol] = regionIds[row][col];
+    frontier.push([nextRow, nextCol]);
+    remaining -= 1;
+  }
+  return regionIds;
+}
+
+function generatePuzzle(size) {
+  const solutionColumns = randomSolutionColumns(size);
+  const regionIds = buildConnectedRegions(size, solutionColumns);
+  const colors = shuffle(palette).slice(0, size);
   return {
-    id,
-    age,
+    id: `RANDOM-${Date.now()}`,
+    age: ageBySize[size],
     size,
-    title,
-    colors: palette.slice(0, size),
-    premise: `本题有 ${size} 只青蛙、${size} 个连通区域；每行、每列、每个区域恰好 1 只青蛙。`,
-    grid: Array.from({ length: size }, (_, row) => (
-      Array.from({ length: size }, () => ({ color: palette[row] }))
-    )),
-    solution: solutionColumns.map((solutionCol) => (
-      Array.from({ length: size }, (_, col) => col === solutionCol ? 1 : 0)
-    )),
-    givens: givenRows.map((row) => [row, solutionColumns[row]])
+    title: '随机池塘探案',
+    colors,
+    premise: `本题随机生成 ${size} 只青蛙、${size} 个连通颜色区域；每行、每列、每个区域恰好 1 只青蛙。`,
+    grid: regionIds.map((row) => row.map((regionId) => ({ color: colors[regionId], regionId }))),
+    solution: solutionColumns.map((solutionCol) => Array.from({ length: size }, (_, col) => col === solutionCol ? 1 : 0))
   };
 }
 
-const puzzles = [
-  rowRegionPuzzle({ id: 'L1-001', age: '6–7 岁', size: 6, title: '池塘初探', solutionColumns: [0, 2, 4, 1, 3, 5], givenRows: [0, 1, 2, 3, 4] }),
-  rowRegionPuzzle({ id: 'L2-001', age: '7–8 岁', size: 7, title: '荷叶小径', solutionColumns: [1, 3, 5, 0, 2, 4, 6], givenRows: [0, 1, 2, 3, 4, 5] }),
-  rowRegionPuzzle({ id: 'L3-001', age: '8–9 岁', size: 9, title: '九宫湿地', solutionColumns: [0, 2, 4, 6, 8, 1, 3, 5, 7], givenRows: [0, 1, 2, 3, 4, 5, 6, 7] })
-];
-
-function createEmptyMarks(size, givens = []) {
-  const marks = Array.from({ length: size }, () => Array.from({ length: size }, () => CELL_STATES.unknown));
-  givens.forEach(([row, col]) => {
-    marks[row][col] = CELL_STATES.frog;
-  });
-  return marks;
-}
-
-function cycleState(state) {
-  if (state === CELL_STATES.unknown) return CELL_STATES.frog;
-  if (state === CELL_STATES.frog) return CELL_STATES.excluded;
-  return CELL_STATES.unknown;
+function createEmptyMarks(size) {
+  return Array.from({ length: size }, () => Array.from({ length: size }, () => CELL_STATES.unknown));
 }
 
 function getAdjacentCells(row, col, size) {
@@ -58,46 +79,11 @@ function getAdjacentCells(row, col, size) {
 }
 
 function findRegions(puzzle) {
-  const visited = Array.from({ length: puzzle.size }, () => Array.from({ length: puzzle.size }, () => false));
-  const regions = [];
-  for (let row = 0; row < puzzle.size; row += 1) {
-    for (let col = 0; col < puzzle.size; col += 1) {
-      if (visited[row][col]) continue;
-      const color = puzzle.grid[row][col].color;
-      const cells = [];
-      const queue = [[row, col]];
-      visited[row][col] = true;
-      for (let index = 0; index < queue.length; index += 1) {
-        const [currentRow, currentCol] = queue[index];
-        cells.push([currentRow, currentCol]);
-        [[1, 0], [-1, 0], [0, 1], [0, -1]].forEach(([dr, dc]) => {
-          const nextRow = currentRow + dr;
-          const nextCol = currentCol + dc;
-          if (nextRow >= 0 && nextRow < puzzle.size && nextCol >= 0 && nextCol < puzzle.size && !visited[nextRow][nextCol] && puzzle.grid[nextRow][nextCol].color === color) {
-            visited[nextRow][nextCol] = true;
-            queue.push([nextRow, nextCol]);
-          }
-        });
-      }
-      regions.push({ color, cells });
-    }
-  }
-  return regions;
-}
-
-function applyFrogExclusions(puzzle, marks, row, col) {
-  const nextMarks = marks.map((line) => [...line]);
-  const region = findRegions(puzzle).find(({ cells }) => cells.some(([r, c]) => r === row && c === col));
-  const affected = [
-    ...Array.from({ length: puzzle.size }, (_, index) => [row, index]),
-    ...Array.from({ length: puzzle.size }, (_, index) => [index, col]),
-    ...getAdjacentCells(row, col, puzzle.size),
-    ...(region ? region.cells : [])
-  ];
-  affected.forEach(([nextRow, nextCol]) => {
-    if ((nextRow !== row || nextCol !== col) && nextMarks[nextRow][nextCol] === CELL_STATES.unknown) nextMarks[nextRow][nextCol] = CELL_STATES.excluded;
-  });
-  return nextMarks;
+  return puzzle.colors.map((color, regionId) => ({
+    color,
+    regionId,
+    cells: puzzle.grid.flatMap((row, rowIndex) => row.flatMap((cell, colIndex) => cell.regionId === regionId ? [[rowIndex, colIndex]] : []))
+  }));
 }
 
 function validateMarks(puzzle, marks) {
@@ -110,56 +96,56 @@ function validateMarks(puzzle, marks) {
   }
   const regions = findRegions(puzzle);
   frogs.forEach(([row, col], index) => {
-    if (!puzzle.solution[row][col]) errors.push(`第 ${row + 1} 行第 ${col + 1} 列不是青蛙位置。`);
     frogs.slice(index + 1).forEach(([otherRow, otherCol]) => {
-      if (row === otherRow) errors.push(`第 ${row + 1} 行出现了多只青蛙。`);
-      if (col === otherCol) errors.push(`第 ${col + 1} 列出现了多只青蛙。`);
-      if (Math.abs(row - otherRow) <= 1 && Math.abs(col - otherCol) <= 1) errors.push('两只青蛙违反了非相邻规则。');
+      if (row === otherRow) errors.push(`第 ${row + 1} 行已经有青蛙。`);
+      if (col === otherCol) errors.push(`第 ${col + 1} 列已经有青蛙。`);
+      if (Math.abs(row - otherRow) <= 1 && Math.abs(col - otherCol) <= 1) errors.push('两只青蛙不能相邻。');
     });
   });
   regions.forEach((region) => {
     const frogsInRegion = region.cells.filter(([row, col]) => marks[row][col] === CELL_STATES.frog).length;
-    if (frogsInRegion > 1) errors.push(`${region.color} 区域出现了多只青蛙。`);
+    if (frogsInRegion > 1) errors.push(`${region.color} 区域已经有青蛙。`);
   });
   return [...new Set(errors)];
 }
 
-function completionStats(puzzle, marks) {
-  let correctFrogs = 0;
+function scoreMarks(puzzle, marks) {
+  let found = 0;
+  let wrongFrogs = 0;
+  let missedFrogs = 0;
   for (let row = 0; row < puzzle.size; row += 1) {
     for (let col = 0; col < puzzle.size; col += 1) {
-      if (puzzle.solution[row][col] && marks[row][col] === CELL_STATES.frog) correctFrogs += 1;
+      if (marks[row][col] === CELL_STATES.frog && puzzle.solution[row][col]) found += 1;
+      if (marks[row][col] === CELL_STATES.frog && !puzzle.solution[row][col]) wrongFrogs += 1;
+      if (marks[row][col] !== CELL_STATES.frog && puzzle.solution[row][col]) missedFrogs += 1;
     }
   }
-  return { correctFrogs, expected: puzzle.size, complete: correctFrogs === puzzle.size };
+  return { found, wrongFrogs, missedFrogs, total: puzzle.size, accuracy: Math.round((found / puzzle.size) * 100) };
 }
 
 const board = document.querySelector('#board');
-const levelSelect = document.querySelector('#levelSelect');
-const resetButton = document.querySelector('#resetButton');
+const sizeSelect = document.querySelector('#sizeSelect');
+const newGameButton = document.querySelector('#newGameButton');
+const checkButton = document.querySelector('#checkButton');
+const clearButton = document.querySelector('#clearButton');
 const status = document.querySelector('#status');
 const levelMeta = document.querySelector('#levelMeta');
-let activePuzzle = puzzles[0];
-let marks = createInitialMarks(activePuzzle);
-
-function createInitialMarks(puzzle) {
-  return puzzle.givens.reduce((currentMarks, [row, col]) => applyFrogExclusions(puzzle, currentMarks, row, col), createEmptyMarks(puzzle.size, puzzle.givens));
-}
-
-function isGivenCell(row, col) {
-  return activePuzzle.givens.some(([givenRow, givenCol]) => givenRow === row && givenCol === col);
-}
-
-function renderLevelOptions() {
-  levelSelect.innerHTML = puzzles.map((puzzle, index) => `<option value="${index}">${puzzle.age} · ${puzzle.size}×${puzzle.size} · ${puzzle.title}</option>`).join('');
-}
+const reasonBox = document.querySelector('#reasonBox');
+let activePuzzle = generatePuzzle(Number(sizeSelect.value));
+let marks = createEmptyMarks(activePuzzle.size);
+let checked = false;
 
 function renderMeta() {
   levelMeta.innerHTML = `
-    <dt>尺寸</dt><dd>${activePuzzle.size}×${activePuzzle.size}</dd>
+    <dt>尺寸</dt><dd>${activePuzzle.size}×${activePuzzle.size}（${activePuzzle.age} 可用）</dd>
     <dt>前提</dt><dd>${activePuzzle.premise}</dd>
-    <dt>区域</dt><dd>${activePuzzle.colors.length} 个同色连通区域</dd>
+    <dt>目标</dt><dd>左键标青蛙，右键标空白，最后点击“检查正确率”。</dd>
   `;
+}
+
+function setMark(row, col, state) {
+  marks[row][col] = marks[row][col] === state ? CELL_STATES.unknown : state;
+  checked = false;
 }
 
 function renderBoard() {
@@ -170,13 +156,12 @@ function renderBoard() {
       const cell = document.createElement('button');
       const state = marks[row][col];
       const color = activePuzzle.grid[row][col].color;
-      cell.className = `cell color-${color} state-${state}${isGivenCell(row, col) ? ' is-given' : ''}`;
+      cell.className = `cell color-${color} state-${state}${checked && activePuzzle.solution[row][col] ? ' reveal-solution' : ''}`;
       cell.type = 'button';
       cell.dataset.row = row;
       cell.dataset.col = col;
       cell.setAttribute('aria-label', `第 ${row + 1} 行第 ${col + 1} 列，${color}，${state}`);
-      cell.textContent = state === CELL_STATES.frog ? '🐸' : state === CELL_STATES.excluded ? '✕' : '';
-      cell.disabled = isGivenCell(row, col);
+      cell.textContent = state === CELL_STATES.frog ? '🐸' : state === CELL_STATES.excluded ? '✕' : checked && activePuzzle.solution[row][col] ? '✓' : '';
       board.append(cell);
     }
   }
@@ -184,39 +169,51 @@ function renderBoard() {
 }
 
 function renderStatus() {
-  const errors = validateMarks(activePuzzle, marks);
-  const stats = completionStats(activePuzzle, marks);
-  if (errors.length > 0) {
-    status.textContent = `需要重新说明：${errors[0]}`;
-    status.className = 'status error';
+  if (checked) {
+    const score = scoreMarks(activePuzzle, marks);
+    status.textContent = `正确率 ${score.accuracy}%：找对 ${score.found}/${score.total} 只，错标 ${score.wrongFrogs} 格，漏找 ${score.missedFrogs} 只。`;
+    status.className = score.found === score.total && score.wrongFrogs === 0 ? 'status success' : 'status error';
     return;
   }
-  status.textContent = stats.complete ? '侦探成功：本关所有青蛙已被逻辑证明！' : `已确认 ${stats.correctFrogs}/${stats.expected} 只青蛙。请继续用“因为……”说明推理。`;
-  status.className = stats.complete ? 'status success' : 'status';
+  const errors = validateMarks(activePuzzle, marks);
+  status.textContent = errors.length > 0 ? `规则提醒：${errors[0]}` : '请先口述理由，再标记。左键=青蛙，右键=空白。';
+  status.className = errors.length > 0 ? 'status error' : 'status';
+}
+
+function startNewGame() {
+  activePuzzle = generatePuzzle(Number(sizeSelect.value));
+  marks = createEmptyMarks(activePuzzle.size);
+  checked = false;
+  reasonBox.value = '';
+  renderMeta();
+  renderBoard();
 }
 
 board.addEventListener('click', (event) => {
   const cell = event.target.closest('.cell');
   if (!cell) return;
-  const row = Number(cell.dataset.row);
-  const col = Number(cell.dataset.col);
-  marks[row][col] = cycleState(marks[row][col]);
-  if (marks[row][col] === CELL_STATES.frog) marks = applyFrogExclusions(activePuzzle, marks, row, col);
+  setMark(Number(cell.dataset.row), Number(cell.dataset.col), CELL_STATES.frog);
   renderBoard();
 });
 
-levelSelect.addEventListener('change', () => {
-  activePuzzle = puzzles[Number(levelSelect.value)];
-  marks = createInitialMarks(activePuzzle);
-  renderMeta();
+board.addEventListener('contextmenu', (event) => {
+  const cell = event.target.closest('.cell');
+  if (!cell) return;
+  event.preventDefault();
+  setMark(Number(cell.dataset.row), Number(cell.dataset.col), CELL_STATES.excluded);
   renderBoard();
 });
 
-resetButton.addEventListener('click', () => {
-  marks = createInitialMarks(activePuzzle);
+newGameButton.addEventListener('click', startNewGame);
+clearButton.addEventListener('click', () => {
+  marks = createEmptyMarks(activePuzzle.size);
+  checked = false;
+  renderBoard();
+});
+checkButton.addEventListener('click', () => {
+  checked = true;
   renderBoard();
 });
 
-renderLevelOptions();
 renderMeta();
 renderBoard();

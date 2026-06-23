@@ -141,3 +141,69 @@ export function completionStats(puzzle, marks) {
   }
   return { correctFrogs, expected: puzzle.size, complete: correctFrogs === puzzle.size };
 }
+
+const generatedPalette = ['pond', 'lotus', 'sun', 'sky', 'berry', 'mint', 'peach', 'lavender', 'reed'];
+
+function randomize(items, random) {
+  const copy = [...items];
+  for (let index = copy.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(random() * (index + 1));
+    [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
+  }
+  return copy;
+}
+
+function createSeededRandom(seed) {
+  let value = seed;
+  return () => {
+    value = (value * 1664525 + 1013904223) % 4294967296;
+    return value / 4294967296;
+  };
+}
+
+function neighborCells4(row, col, size) {
+  return [[row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]].filter(([r, c]) => (
+    r >= 0 && r < size && c >= 0 && c < size
+  ));
+}
+
+export function generatePuzzle(size, seed = Date.now()) {
+  const random = createSeededRandom(seed);
+  const baseColumns = Array.from({ length: size }, (_, index) => index);
+  let solutionColumns = baseColumns;
+
+  for (let attempt = 0; attempt < 5000; attempt += 1) {
+    const candidate = randomize(baseColumns, random);
+    if (candidate.every((col, row) => row === 0 || Math.abs(col - candidate[row - 1]) > 1)) {
+      solutionColumns = candidate;
+      break;
+    }
+  }
+
+  const regionIds = Array.from({ length: size }, () => Array.from({ length: size }, () => -1));
+  const frontier = [];
+  solutionColumns.forEach((col, row) => {
+    regionIds[row][col] = row;
+    frontier.push([row, col]);
+  });
+
+  let remaining = size * size - size;
+  while (remaining > 0) {
+    const [row, col] = frontier[Math.floor(random() * frontier.length)];
+    const openNeighbors = neighborCells4(row, col, size).filter(([r, c]) => regionIds[r][c] === -1);
+    if (openNeighbors.length === 0) continue;
+    const [nextRow, nextCol] = openNeighbors[Math.floor(random() * openNeighbors.length)];
+    regionIds[nextRow][nextCol] = regionIds[row][col];
+    frontier.push([nextRow, nextCol]);
+    remaining -= 1;
+  }
+
+  const colors = randomize(generatedPalette, random).slice(0, size);
+  return {
+    id: `RANDOM-${seed}`,
+    size,
+    colors,
+    grid: regionIds.map((row) => row.map((regionId) => ({ color: colors[regionId], regionId }))),
+    solution: solutionColumns.map((solutionCol) => Array.from({ length: size }, (_, col) => col === solutionCol ? 1 : 0))
+  };
+}

@@ -11,14 +11,20 @@
       <section class="hero">
         <div class="mascot" aria-hidden="true">🐸🔍</div>
         <div>
-          <p class="eyebrow">V2.1 · 儿童课堂逻辑教具</p>
+          <p class="eyebrow">随机课堂探案 · 逻辑表达训练</p>
           <h1>蛙蛙探长</h1>
-          <p class="tagline">不猜！每一只青蛙都要说出“因为……”</p>
+          <p class="tagline">先说“为什么”，再左键找青蛙、右键排除空格。</p>
         </div>
         <div class="controls">
-          <label for="levelSelect">选择探案池塘</label>
-          <select id="levelSelect"></select>
-          <button id="resetButton" type="button">重置标记</button>
+          <label for="sizeSelect">选择棋盘</label>
+          <select id="sizeSelect">
+            <option value="6">6×6 · 6–7 岁</option>
+            <option value="7">7×7 · 7–8 岁</option>
+            <option value="9">9×9 · 8–9 岁</option>
+          </select>
+          <button id="newGameButton" type="button">随机新棋盘</button>
+          <button id="checkButton" type="button">检查正确率</button>
+          <button id="clearButton" type="button">清空标记</button>
         </div>
       </section>
 
@@ -32,15 +38,14 @@
         <aside class="panel">
           <h2>侦探发言卡</h2>
           <p class="speech">我认为第 X 行第 Y 列是青蛙，因为……</p>
+          <textarea id="reasonBox" rows="5" placeholder="教师可让学生先口述，也可以在这里记录理由：例如“这一列只剩这一格可能有青蛙”。"></textarea>
           <ul>
-            <li>说规则：行列规则 / 区域规则 / 邻接规则</li>
-            <li>说依据：唯一候选 / 已排除情况 / 区域已满</li>
-            <li>不能说明原因，就先不要下结论</li>
+            <li>左键：标记青蛙 🐸</li>
+            <li>右键：标记空白 ✕</li>
+            <li>每一步都要说规则和依据，不能猜。</li>
           </ul>
-          <h2>当前关卡</h2>
+          <h2>当前棋盘</h2>
           <dl id="levelMeta"></dl>
-          <h2>操作</h2>
-          <p>点击格子循环切换：未知 → 青蛙 → 排除。带小星星的青蛙是预设起点。</p>
         </aside>
 
         <section class="board-card">

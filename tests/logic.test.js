@@ -7,6 +7,7 @@ import {
   createEmptyMarks,
   findRegions,
   getAdjacentCells,
+  generatePuzzle,
   validateMarks,
   validatePuzzlePremises
 } from '../src/logic.js';
@@ -69,3 +70,9 @@ puzzles.forEach((puzzle) => {
 
 assert.deepEqual(getAdjacentCells(0, 0, 3), [[0, 1], [1, 0], [1, 1]], 'corner adjacency');
 assert.equal(getAdjacentCells(1, 1, 3).length, 8, 'center adjacency');
+
+[6, 7, 9].forEach((size) => {
+  const puzzle = generatePuzzle(size, 20260623 + size);
+  assert.deepEqual(validatePuzzlePremises(puzzle), [], `generated ${size}×${size} puzzle satisfies premises`);
+  assert.deepEqual(validateMarks(puzzle, puzzle.solution.map((row) => row.map((hasFrog) => hasFrog ? CELL_STATES.frog : CELL_STATES.unknown))), [], `generated ${size}×${size} solution is valid`);
+});
