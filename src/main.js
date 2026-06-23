@@ -36,8 +36,18 @@ function renderMeta() {
 
 function renderBoard() {
   board.style.setProperty('--size', activePuzzle.size);
-  board.innerHTML = '';
+  board.innerHTML = '<div class="coord-label corner" aria-hidden="true"></div>';
+  for (let col = 0; col < activePuzzle.size; col += 1) {
+    const label = document.createElement('div');
+    label.className = 'coord-label top-label';
+    label.textContent = `H${col + 1}`;
+    board.append(label);
+  }
   for (let row = 0; row < activePuzzle.size; row += 1) {
+    const rowLabel = document.createElement('div');
+    rowLabel.className = 'coord-label side-label';
+    rowLabel.textContent = `Z${row + 1}`;
+    board.append(rowLabel);
     for (let col = 0; col < activePuzzle.size; col += 1) {
       const cell = document.createElement('button');
       const state = marks[row][col];
@@ -46,7 +56,7 @@ function renderBoard() {
       cell.type = 'button';
       cell.dataset.row = row;
       cell.dataset.col = col;
-      cell.setAttribute('aria-label', `第 ${row + 1} 行第 ${col + 1} 列，${color}，${state}`);
+      cell.setAttribute('aria-label', `Z${row + 1} 行 H${col + 1} 列，${color}，${state}`);
       cell.textContent = state === CELL_STATES.frog ? '🐸' : state === CELL_STATES.excluded ? '✕' : '';
       cell.disabled = isGivenCell(row, col);
       board.append(cell);
