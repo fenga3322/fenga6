@@ -1,20 +1,38 @@
 const CELL_STATES = Object.freeze({ unknown: 'unknown', frog: 'frog', excluded: 'excluded' });
 const palette = ['pond', 'lotus', 'sun', 'sky', 'berry', 'mint', 'peach', 'lavender', 'reed'];
-const ageBySize = { 6: '6–7 岁', 7: '7–8 岁', 9: '8–9 岁' };
+const puzzleBank = [
+  { id: 'WW-C-001', level: '初级', size: 6, seed: 61001 },
+  { id: 'WW-C-002', level: '初级', size: 6, seed: 61002 },
+  { id: 'WW-C-003', level: '初级', size: 6, seed: 61003 },
+  { id: 'WW-M-001', level: '中级', size: 7, seed: 72001 },
+  { id: 'WW-M-002', level: '中级', size: 7, seed: 72002 },
+  { id: 'WW-M-003', level: '中级', size: 7, seed: 72003 },
+  { id: 'WW-H-001', level: '高级', size: 9, seed: 93001 },
+  { id: 'WW-H-002', level: '高级', size: 9, seed: 93002 },
+  { id: 'WW-H-003', level: '高级', size: 9, seed: 93003 }
+];
 
-function shuffle(items) {
+function createSeededRandom(seed) {
+  let value = seed;
+  return () => {
+    value = (value * 1664525 + 1013904223) % 4294967296;
+    return value / 4294967296;
+  };
+}
+
+function shuffle(items, random = Math.random) {
   const copy = [...items];
   for (let index = copy.length - 1; index > 0; index -= 1) {
-    const swapIndex = Math.floor(Math.random() * (index + 1));
+    const swapIndex = Math.floor(random() * (index + 1));
     [copy[index], copy[swapIndex]] = [copy[swapIndex], copy[index]];
   }
   return copy;
 }
 
-function randomSolutionColumns(size) {
+function randomSolutionColumns(size, random = Math.random) {
   const columns = Array.from({ length: size }, (_, index) => index);
   for (let attempt = 0; attempt < 5000; attempt += 1) {
-    const candidate = shuffle(columns);
+    const candidate = shuffle(columns, random);
     if (candidate.every((col, row) => row === 0 || Math.abs(col - candidate[row - 1]) > 1)) return candidate;
   }
   return columns.map((_, row) => (row * 2) % size);
@@ -24,7 +42,7 @@ function neighbors4(row, col, size) {
   return [[row - 1, col], [row + 1, col], [row, col - 1], [row, col + 1]].filter(([r, c]) => r >= 0 && r < size && c >= 0 && c < size);
 }
 
-function buildConnectedRegions(size, solutionColumns) {
+function buildConnectedRegions(size, solutionColumns, random = Math.random) {
   const regionIds = Array.from({ length: size }, () => Array.from({ length: size }, () => -1));
   const frontier = [];
   solutionColumns.forEach((col, row) => {
@@ -34,10 +52,10 @@ function buildConnectedRegions(size, solutionColumns) {
 
   let remaining = size * size - size;
   while (remaining > 0) {
-    const [row, col] = frontier[Math.floor(Math.random() * frontier.length)];
+    const [row, col] = frontier[Math.floor(random() * frontier.length)];
     const openNeighbors = neighbors4(row, col, size).filter(([r, c]) => regionIds[r][c] === -1);
     if (openNeighbors.length === 0) continue;
-    const [nextRow, nextCol] = openNeighbors[Math.floor(Math.random() * openNeighbors.length)];
+    const [nextRow, nextCol] = openNeighbors[Math.floor(random() * openNeighbors.length)];
     regionIds[nextRow][nextCol] = regionIds[row][col];
     frontier.push([nextRow, nextCol]);
     remaining -= 1;
@@ -45,13 +63,16 @@ function buildConnectedRegions(size, solutionColumns) {
   return regionIds;
 }
 
-function generatePuzzle(size) {
-  const solutionColumns = randomSolutionColumns(size);
-  const regionIds = buildConnectedRegions(size, solutionColumns);
-  const colors = shuffle(palette).slice(0, size);
+function generatePuzzle(entry) {
+  const random = createSeededRandom(entry.seed);
+  const size = entry.size;
+  const solutionColumns = randomSolutionColumns(size, random);
+  const regionIds = buildConnectedRegions(size, solutionColumns, random);
+  const colors = shuffle(palette, random).slice(0, size);
   return {
-    id: `RANDOM-${Date.now()}`,
-    age: ageBySize[size],
+    id: entry.id,
+    level: entry.level,
+    seed: entry.seed,
     size,
     title: '随机池塘探案',
     colors,
@@ -124,23 +145,48 @@ function scoreMarks(puzzle, marks) {
 }
 
 const board = document.querySelector('#board');
-const sizeSelect = document.querySelector('#sizeSelect');
+const levelSelect = document.querySelector('#levelSelect');
 const newGameButton = document.querySelector('#newGameButton');
+const puzzleIdInput = document.querySelector('#puzzleIdInput');
+const loadPuzzleButton = document.querySelector('#loadPuzzleButton');
 const checkButton = document.querySelector('#checkButton');
 const clearButton = document.querySelector('#clearButton');
 const status = document.querySelector('#status');
 const levelMeta = document.querySelector('#levelMeta');
 const reasonBox = document.querySelector('#reasonBox');
-let activePuzzle = generatePuzzle(Number(sizeSelect.value));
+let currentEntry = pickRandomEntry(levelSelect.value);
+let activePuzzle = generatePuzzle(currentEntry);
 let marks = createEmptyMarks(activePuzzle.size);
 let checked = false;
 let clickTimer = 0;
 
+function pickRandomEntry(level) {
+  const candidates = puzzleBank.filter((entry) => entry.level === level);
+  return candidates[Math.floor(Math.random() * candidates.length)];
+}
+
+function findEntryById(id) {
+  return puzzleBank.find((entry) => entry.id.toUpperCase() === id.trim().toUpperCase());
+}
+
+function loadEntry(entry) {
+  currentEntry = entry;
+  activePuzzle = generatePuzzle(entry);
+  marks = createEmptyMarks(activePuzzle.size);
+  checked = false;
+  reasonBox.value = '';
+  levelSelect.value = entry.level;
+  puzzleIdInput.value = entry.id;
+  renderMeta();
+  renderBoard();
+}
+
 function renderMeta() {
   levelMeta.innerHTML = `
-    <dt>尺寸</dt><dd>${activePuzzle.size}×${activePuzzle.size}（${activePuzzle.age} 可用）</dd>
+    <dt>编号</dt><dd>${activePuzzle.id}</dd>
+    <dt>级别</dt><dd>${activePuzzle.level} · ${activePuzzle.size}×${activePuzzle.size}</dd>
     <dt>前提</dt><dd>${activePuzzle.premise}</dd>
-    <dt>目标</dt><dd>左键标青蛙，右键标空白，最后点击“检查正确率”。</dd>
+    <dt>目标</dt><dd>左键标青蛙，右键或双击标 X，最后点击“检查正确率”。</dd>
   `;
 }
 
@@ -187,17 +233,12 @@ function renderStatus() {
     return;
   }
   const errors = validateMarks(activePuzzle, marks);
-  status.textContent = errors.length > 0 ? `规则提醒：${errors[0]}` : '请先口述理由，再标记。左键=青蛙，右键=空白。';
+  status.textContent = errors.length > 0 ? `规则提醒：${errors[0]}` : '请先口述理由，再标记。左键=青蛙，右键/双击=X。';
   status.className = errors.length > 0 ? 'status error' : 'status';
 }
 
 function startNewGame() {
-  activePuzzle = generatePuzzle(Number(sizeSelect.value));
-  marks = createEmptyMarks(activePuzzle.size);
-  checked = false;
-  reasonBox.value = '';
-  renderMeta();
-  renderBoard();
+  loadEntry(pickRandomEntry(levelSelect.value));
 }
 
 board.addEventListener('click', (event) => {
@@ -215,7 +256,8 @@ board.addEventListener('dblclick', (event) => {
   if (!cell) return;
   event.preventDefault();
   window.clearTimeout(clickTimer);
-  setMark(Number(cell.dataset.row), Number(cell.dataset.col), CELL_STATES.excluded);
+  marks[Number(cell.dataset.row)][Number(cell.dataset.col)] = CELL_STATES.excluded;
+  checked = false;
   renderBoard();
 });
 
@@ -224,11 +266,21 @@ board.addEventListener('contextmenu', (event) => {
   if (!cell) return;
   event.preventDefault();
   window.clearTimeout(clickTimer);
-  setMark(Number(cell.dataset.row), Number(cell.dataset.col), CELL_STATES.excluded);
+  marks[Number(cell.dataset.row)][Number(cell.dataset.col)] = CELL_STATES.excluded;
+  checked = false;
   renderBoard();
 });
 
 newGameButton.addEventListener('click', startNewGame);
+loadPuzzleButton.addEventListener('click', () => {
+  const entry = findEntryById(puzzleIdInput.value);
+  if (entry) {
+    loadEntry(entry);
+    return;
+  }
+  status.textContent = '没有找到这个题库编号，请检查输入。';
+  status.className = 'status error';
+});
 clearButton.addEventListener('click', () => {
   marks = createEmptyMarks(activePuzzle.size);
   checked = false;
@@ -239,5 +291,6 @@ checkButton.addEventListener('click', () => {
   renderBoard();
 });
 
+puzzleIdInput.value = activePuzzle.id;
 renderMeta();
 renderBoard();

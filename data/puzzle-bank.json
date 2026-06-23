@@ -1,0 +1,11 @@
+[
+  { "id": "WW-C-001", "level": "初级", "size": 6, "seed": 61001 },
+  { "id": "WW-C-002", "level": "初级", "size": 6, "seed": 61002 },
+  { "id": "WW-C-003", "level": "初级", "size": 6, "seed": 61003 },
+  { "id": "WW-M-001", "level": "中级", "size": 7, "seed": 72001 },
+  { "id": "WW-M-002", "level": "中级", "size": 7, "seed": 72002 },
+  { "id": "WW-M-003", "level": "中级", "size": 7, "seed": 72003 },
+  { "id": "WW-H-001", "level": "高级", "size": 9, "seed": 93001 },
+  { "id": "WW-H-002", "level": "高级", "size": 9, "seed": 93002 },
+  { "id": "WW-H-003", "level": "高级", "size": 9, "seed": 93003 }
+]

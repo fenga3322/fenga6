@@ -76,3 +76,10 @@ assert.equal(getAdjacentCells(1, 1, 3).length, 8, 'center adjacency');
   assert.deepEqual(validatePuzzlePremises(puzzle), [], `generated ${size}×${size} puzzle satisfies premises`);
   assert.deepEqual(validateMarks(puzzle, puzzle.solution.map((row) => row.map((hasFrog) => hasFrog ? CELL_STATES.frog : CELL_STATES.unknown))), [], `generated ${size}×${size} solution is valid`);
 });
+
+const bank = JSON.parse(await import('node:fs/promises').then((fs) => fs.readFile('data/puzzle-bank.json', 'utf8')));
+assert.equal(new Set(bank.map((entry) => entry.id)).size, bank.length, 'puzzle bank ids are unique');
+bank.forEach((entry) => {
+  assert.ok(['初级', '中级', '高级'].includes(entry.level), `${entry.id} has a supported level`);
+  assert.ok([6, 7, 9].includes(entry.size), `${entry.id} has a supported size`);
+});
