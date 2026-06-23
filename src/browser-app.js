@@ -134,6 +134,7 @@ const reasonBox = document.querySelector('#reasonBox');
 let activePuzzle = generatePuzzle(Number(sizeSelect.value));
 let marks = createEmptyMarks(activePuzzle.size);
 let checked = false;
+let clickTimer = 0;
 
 function renderMeta() {
   levelMeta.innerHTML = `
@@ -201,8 +202,20 @@ function startNewGame() {
 
 board.addEventListener('click', (event) => {
   const cell = event.target.closest('.cell');
+  if (!cell || event.detail > 1) return;
+  window.clearTimeout(clickTimer);
+  clickTimer = window.setTimeout(() => {
+    setMark(Number(cell.dataset.row), Number(cell.dataset.col), CELL_STATES.frog);
+    renderBoard();
+  }, 180);
+});
+
+board.addEventListener('dblclick', (event) => {
+  const cell = event.target.closest('.cell');
   if (!cell) return;
-  setMark(Number(cell.dataset.row), Number(cell.dataset.col), CELL_STATES.frog);
+  event.preventDefault();
+  window.clearTimeout(clickTimer);
+  setMark(Number(cell.dataset.row), Number(cell.dataset.col), CELL_STATES.excluded);
   renderBoard();
 });
 
@@ -210,6 +223,7 @@ board.addEventListener('contextmenu', (event) => {
   const cell = event.target.closest('.cell');
   if (!cell) return;
   event.preventDefault();
+  window.clearTimeout(clickTimer);
   setMark(Number(cell.dataset.row), Number(cell.dataset.col), CELL_STATES.excluded);
   renderBoard();
 });

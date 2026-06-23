@@ -9,6 +9,7 @@ const levelMeta = document.querySelector('#levelMeta');
 
 let activePuzzle = puzzles[0];
 let marks = createInitialMarks(activePuzzle);
+let clickTimer = 0;
 
 function createInitialMarks(puzzle) {
   return puzzle.givens.reduce((currentMarks, [row, col]) => (
@@ -85,11 +86,25 @@ function renderStatus() {
 
 board.addEventListener('click', (event) => {
   const cell = event.target.closest('.cell');
+  if (!cell || event.detail > 1) return;
+  window.clearTimeout(clickTimer);
+  clickTimer = window.setTimeout(() => {
+    const row = Number(cell.dataset.row);
+    const col = Number(cell.dataset.col);
+    marks[row][col] = cycleState(marks[row][col]);
+    if (marks[row][col] === CELL_STATES.frog) autoExcludeFromFrog(row, col);
+    renderBoard();
+  }, 180);
+});
+
+board.addEventListener('dblclick', (event) => {
+  const cell = event.target.closest('.cell');
   if (!cell) return;
+  event.preventDefault();
+  window.clearTimeout(clickTimer);
   const row = Number(cell.dataset.row);
   const col = Number(cell.dataset.col);
-  marks[row][col] = cycleState(marks[row][col]);
-  if (marks[row][col] === CELL_STATES.frog) autoExcludeFromFrog(row, col);
+  marks[row][col] = marks[row][col] === CELL_STATES.excluded ? CELL_STATES.unknown : CELL_STATES.excluded;
   renderBoard();
 });
 
