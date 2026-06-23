@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>蛙蛙探长课堂逻辑游戏</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div class="mascot" aria-hidden="true">🐸🔍</div>
+        <div>
+          <p class="eyebrow">V2.1 · 儿童课堂逻辑教具</p>
+          <h1>蛙蛙探长</h1>
+          <p class="tagline">不猜！每一只青蛙都要说出“因为……”</p>
+        </div>
+        <div class="controls">
+          <label for="levelSelect">选择探案池塘</label>
+          <select id="levelSelect"></select>
+          <button id="resetButton" type="button">重置标记</button>
+        </div>
+      </section>
+
+      <section class="rule-strip" aria-label="三条核心规则">
+        <article><strong>1 行列唯一</strong><span>每行每列恰好 1 只</span></article>
+        <article><strong>2 邻接排除</strong><span>8 个方向不能贴贴</span></article>
+        <article><strong>3 区域唯一</strong><span>每个颜色区域恰好 1 只</span></article>
+      </section>
+
+      <section class="layout">
+        <aside class="panel">
+          <h2>侦探发言卡</h2>
+          <p class="speech">我认为第 X 行第 Y 列是青蛙，因为……</p>
+          <ul>
+            <li>说规则：行列规则 / 区域规则 / 邻接规则</li>
+            <li>说依据：唯一候选 / 已排除情况 / 区域已满</li>
+            <li>不能说明原因，就先不要下结论</li>
+          </ul>
+          <h2>当前关卡</h2>
+          <dl id="levelMeta"></dl>
+          <h2>操作</h2>
+          <p>点击格子循环切换：未知 → 青蛙 → 排除。带小星星的青蛙是预设起点。</p>
+        </aside>
+
+        <section class="board-card">
+          <div id="board" class="board" aria-label="彩色逻辑棋盘"></div>
+          <div id="status" class="status" role="status"></div>
+        </section>
+      </section>
+    </main>
+    <script type="module" src="src/main.js"></script>
+  </body>
+</html>
