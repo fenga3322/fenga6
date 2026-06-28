@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>蛙蛙探长课堂逻辑游戏</title>
+    <link rel="stylesheet" href="src/styles.css" />
+  </head>
+  <body>
+    <main class="app-shell">
+      <section class="hero">
+        <div class="mascot" aria-hidden="true">🐸🔍</div>
+        <div>
+          <p class="eyebrow">随机课堂探案 · 逻辑表达训练</p>
+          <h1>蛙蛙探长</h1>
+          <p class="tagline">先说“为什么”，再左键找青蛙、右键或双击打 X。</p>
+        </div>
+        <div class="controls">
+          <label for="levelSelect">选择级别</label>
+          <select id="levelSelect">
+            <option value="初级">初级 · 6×6</option>
+            <option value="中级">中级 · 7×7</option>
+            <option value="高级">高级 · 9×9</option>
+          </select>
+          <button id="newGameButton" type="button">随机题库</button>
+          <label for="puzzleIdInput">题库编号</label>
+          <input id="puzzleIdInput" type="text" inputmode="text" placeholder="例如 WW-C-001" />
+          <button id="loadPuzzleButton" type="button">载入编号</button>
+          <button id="checkButton" type="button">检查正确率</button>
+          <button id="clearButton" type="button">清空标记</button>
+        </div>
+      </section>
+
+      <section class="rule-strip" aria-label="三条核心规则">
+        <article><strong>1 行列唯一</strong><span>每行每列恰好 1 只</span></article>
+        <article><strong>2 邻接排除</strong><span>8 个方向不能贴贴</span></article>
+        <article><strong>3 区域唯一</strong><span>每个颜色区域恰好 1 只</span></article>
+      </section>
+
+      <section class="layout">
+        <aside class="panel">
+          <h2>侦探发言卡</h2>
+          <p class="speech">我认为第 Z 行第 H 列是青蛙，因为……</p>
+          <textarea id="reasonBox" rows="5" placeholder="教师可让学生先口述，也可以在这里记录理由：例如“Z3 行 H5 列所在区域只剩这一格可能有青蛙”。"></textarea>
+          <ul>
+            <li>左键：标记青蛙 🐸</li>
+            <li>右键或双击：标记 X</li>
+            <li>记住题库编号，下次输入编号可回到同一棋盘。</li>
+          </ul>
+          <h2>当前棋盘</h2>
+          <dl id="levelMeta"></dl>
+        </aside>
+
+        <section class="board-card">
+          <div id="board" class="board" aria-label="彩色逻辑棋盘"></div>
+          <div id="status" class="status" role="status"></div>
+        </section>
+      </section>
+    </main>
+    <script src="src/browser-app.js"></script>
+  </body>
+</html>
